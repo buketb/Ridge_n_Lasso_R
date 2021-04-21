@@ -1,0 +1,87 @@
+# Fit Ridge Regression and Lasso on R
+
+rm(list = ls())
+
+# Set working directory
+setwd("/home/fabian/Schreibtisch/Lehre/ML_2017/R_tutorial_July4/")
+
+# Load data
+load("houses_train.RData")
+
+# Save under shorter name
+data <- houses_train
+
+# Remove old data frame
+rm(houses_train)
+
+# Look at data
+str(data)
+
+# Histogram for LOGVALUE
+hist(data$LOGVALUE)
+
+# Examples for factor predictors
+table(data$RATS)
+boxplot(LOGVALUE~RATS, data = data)
+summary(lm(LOGVALUE~RATS+WAT, data = data))
+
+table(dat$REGION)
+boxplot(LOGVALUE~REGION, data = data)
+
+# Examples for numeric predictors
+summary(data$UNITSF*0.093)
+library(ggplot2)
+qplot(x = (UNITSF*0.093), y = LOGVALUE, 
+      data = data, col = I(gray(0.4, 0.4))) + 
+  geom_smooth()
+
+# Run OLS regressions for each predictor, 
+# note adj. R2 in each case
+res_intro <- data.frame(name = names(data)[-1],
+                        adjr2 = NA)
+for (jj in 2:ncol(data)){
+  res_intro[jj-1, 2] <- summary(lm(data[,1]~data[,jj]))$adj.r.squared
+}
+
+# Make model matrix, scale predictors
+x <- scale(model.matrix(LOGVALUE~., data = data)[, -1])
+y <- data$LOGVALUE
+
+# Fit Ridge, Lasso
+library(glmnet)
+fit_ridge <- glmnet(x, y, standardize = FALSE, alpha = 0)
+# Note: rows of b_ridge denote predictors, 
+# cols of b_ridge denote different lambda values
+# largest lambda is in 1st column, smallest in last column
+b_ridge <- coef(fit_ridge)
+fit_lasso <- glmnet(x, y, standardize = FALSE, alpha = 1)
+b_lasso <- coef(fit_lasso)
+
+# See which predictors are nonzero
+# for relatively small value of lambda
+rownames(b_lasso)[b_lasso[, 2] != 0]
+
+# Cross-validation for optimal value of lambda
+cv_ridge <- cv.glmnet(x, y, standardize = FALSE, alpha = 0)
+plot(cv_ridge)
+# lambda with smallest MSE
+cv_ridge$lambda.min
+# biggest lambda for which MSE is
+# within 1 s.e. of minimal MSE
+cv_ridge$lambda.1se
+
+# Get ridge coefficient for optimal lambda
+b_ridge_opt <- predict(fit_ridge, type = "coefficients", s = cv_ridge$lambda.1se)
+
+# Cross-validation for optimal value of lambda
+cv_lasso <- cv.glmnet(x, y, standardize = FALSE, alpha = 1)
+plot(cv_lasso)
+cv_lasso$lambda.min
+cv_lasso$lambda.1se
+
+# Get lasso coefficients for optimal lambda
+b_lasso_opt <- predict(fit_lasso, type = "coefficients", s = cv_lasso$lambda.1se)
+nonzero_lasso <- data.frame(name = row.names(b_lasso_opt)[which(b_lasso_opt != 0)], 
+                            value = (b_lasso_opt)[which(b_lasso_opt != 0)])
+
+
