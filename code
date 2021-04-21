@@ -3,7 +3,7 @@
 rm(list = ls())
 
 # Set working directory
-setwd("/home/fabian/Schreibtisch/Lehre/ML_2017/R_tutorial_July4/")
+setwd(" ")
 
 # Load data
 load("houses_train.RData")
